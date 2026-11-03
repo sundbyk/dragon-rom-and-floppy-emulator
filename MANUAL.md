@@ -111,6 +111,10 @@ switch the computer off and on without the board forgetting where it was.
 
 ## 4. The menu
 
+![The top folder](docs/images/menu-top.jpg)
+
+![A folder of cartridges, with the sizes shown](docs/images/menu-cartridges.jpg)
+
 The menu shows one folder at a time, 12 entries per page. The coloured block in front of each
 name tells you what it is:
 
@@ -222,6 +226,8 @@ board. **Without that wire, do not put these files on the card.** Board V1.2 doe
 ### Both on the card
 
 With both `dragon.rom` and `coco.rom` on the card the menu asks at start up:
+
+![WHICH BASIC?](docs/images/menu-which-basic.jpg)
 
 ```
 WHICH BASIC?

@@ -267,6 +267,8 @@ So every new upgrade.bin or menu.rom shows a different version. Bump the first p
 The menu
 --------
 
+![The menu](docs/images/menu-top.jpg)
+
 In the menu directory is menu.s. It's a 6809 assembly program for the 
 Dragon or Coco that can communicate to the stm32f4 board in order to show a list of all the 
 files in the dragon directory of the SD card. You need lwtools to assemble it
