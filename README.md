@@ -5,6 +5,24 @@ Also now works on the Tandy Color Computer (tested on a Coco 2, but probably wor
 
 How to use it: see [MANUAL.md](MANUAL.md).
 
+The board
+---------
+
+![Dragon/CoCo Cartridge and disk emulator V1.2](docs/images/board-v1.2.webp)
+
+There is a ready made board for this: the *Dragon/CoCo Cartridge and disk emulator* (Kjell
+Sundby, 2024). It is an STM32F407VGT6 on a PCB that fits a standard cartridge case, with a micro
+SD slot, NEXT, PREV and Reset MCU buttons, Power and Status LEDs, the Dragon/CoCo jumper and an
+SWD header for programming. Boards can be had for a small sum: get in touch with me,
+[@sundbyk](https://github.com/sundbyk), here on GitHub.
+
+![The board in a Dragon 32](docs/images/board-in-dragon32.webp)
+
+NOTE: on board V1.2 cartridge pin 40 (!DSD) is not connected, so a BASIC ROM of your own
+(dragon.rom / coco.rom) can not be used with it. The next version of the board will have it.
+Everything else works. You can also build one yourself from an STM32F407 development board, as
+described under 'Wiring it' below.
+
 This is a further development of kernelcrash's original code:
 https://github.com/kernelcrash/dragon-rom-and-floppy-emulator. Added here: a second floppy drive,
 cassette (.cas) loading, a BASIC ROM of your own, folders, covers and more in the menu, and an

@@ -12,6 +12,30 @@ Computer (CoCo 1/2). It reads a micro SD card and gives the computer:
 - optionally a BASIC ROM of your own in place of the computer's (`dragon.rom`, `coco.rom`)
 - a menu to pick from all of the above
 
+## The board
+
+![Dragon/CoCo Cartridge and disk emulator V1.2](docs/images/board-v1.2.webp)
+
+The *Dragon/CoCo Cartridge and disk emulator* fits a standard cartridge case. Boards can be had
+for a small sum: get in touch with [@sundbyk](https://github.com/sundbyk) on GitHub.
+
+| Part              | What it is for |
+|-------------------|----------------|
+| micro SD slot     | The card with the menu, DOS ROMs, games and disks (section 1). |
+| Next / Prev       | Step to the next or previous ROM or disk without the menu (section 9). |
+| Reset MCU         | Restarts the emulator itself. Use it after changing the SD card. |
+| Power LED         | The board has power. |
+| Status LED        | Flickers while new firmware is being written. A steady blink means something is wrong (section 12). |
+| Jumper            | Dragon or CoCo mode (section 2). |
+| GND NRST SWCLK SWD +5V | SWD header for an ST-Link, to put the firmware on a new board. |
+
+Always plug the board in and out with the computer switched off.
+
+On board **V1.2**, cartridge pin 40 is not connected, so a BASIC ROM of your own (section 8)
+can not be used. Leave `dragon.rom` and `coco.rom` off the SD card.
+
+![The board in a Dragon 32](docs/images/board-in-dragon32.webp)
+
 ## Contents
 
 1. [Preparing the SD card](#1-preparing-the-sd-card)
@@ -189,7 +213,7 @@ later (new levels from tape) can not be converted.
 
 Put `dragon.rom` (Dragon mode) or `coco.rom` (CoCo mode) in the root of the card and it is
 used instead of the computer's own BASIC ROM. This needs cartridge pin 40 (!DSD) wired to the
-board. **Without that wire, do not put these files on the card.**
+board. **Without that wire, do not put these files on the card.** Board V1.2 does not have it.
 
 - `dragon.rom`: 16K, for $8000-$BFFF.
 - `coco.rom`: 16K (Extended Color BASIC followed by Color BASIC) or 8K (Color BASIC only).
@@ -244,7 +268,7 @@ Press `@` on an entry to see its cover. A cover is a PMODE 4 picture (256x192, 6
 ## 11. Updating the firmware and the menu
 
 - **Firmware:** copy `upgrade.bin` to the root of the card and reset or power up the board.
-  The board flashes it, deletes the file and restarts. The LED flickers meanwhile. If the
+  The board flashes it, deletes the file and restarts. The Status LED flickers meanwhile. If the
   file is the wrong kind, it is renamed `upgrade.bad` and nothing happens.
 - **Menu:** copy the new `menu.rom` to the root of the card.
 
@@ -255,7 +279,7 @@ menu's top line.
 
 | Problem | What to do |
 |---------|------------|
-| No menu, just BASIC | Is `menu.rom` in the root of the card? Is the board powered? Reset the board, then the computer. |
+| No menu, just BASIC | Is `menu.rom` in the root of the card? Is the Power LED on? Press Reset MCU, then reset the computer. |
 | `NO ROMS OR DISKS IN DRAGON` (or `TANDY`) | Make the `dragon/` or `tandy/` folder and put files in it. |
 | The menu comes back when you start a disk | The DOS ROM is missing: `dragondos.rom` or `tandydos.rom` in the root. |
 | `HARD DRIVE(S) NOT FOUND` | `tandydos.rom` is HDB-DOS. Use plain Disk BASIC 1.1. |
@@ -263,7 +287,8 @@ menu's top line.
 | Wrong keys in BASIC | A CoCo ROM in a Dragon (or the other way round) that is not patched for its keyboard. |
 | Drive B says not ready | Put a disk in it with SHIFT+ENTER. The `B:` row shows what is there. |
 | Hangs at `READING SD CARD` | Update the firmware and the menu together. |
-| The LED blinks steadily | There is no working firmware. Flash it with an ST-Link or USB DFU (see README.md). |
+| The Status LED blinks steadily | There is no working firmware. Flash it with an ST-Link on the SWD header (see README.md). |
+| The computer hangs after choosing 1 or 2 at `WHICH BASIC?` | Pin 40 is not connected (board V1.2). Take `dragon.rom` and `coco.rom` off the card. |
 
 ---
 
