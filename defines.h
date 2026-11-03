@@ -10,7 +10,7 @@
 #define TRUE 1
 #define FALSE 0
 
-// Shown at the top of the KCDFS menu, eg. "1.2.17". Bump the first part for new features.
+// Shown at the top of the menu, eg. "1.2.17". Bump the first part for new features.
 // The last number is counted up by the Makefile each time the emulator is built (see build_number)
 #ifndef FIRMWARE_BUILD
 #define FIRMWARE_BUILD		0

@@ -1,4 +1,4 @@
-; KCDFS (Dragon) / KCCFS (Coco) - rom and disk menu for the dragon-rom-and-floppy-emulator
+; MENU - rom, disk and cassette menu for the dragon-rom-and-floppy-emulator (Dragon and Coco)
 ;
 ; Build with build.sh, which counts up the build number in the title and writes build.inc, then
 ;   lwasm -f raw --list=menu.lst -o menu.rom menu.s
@@ -984,12 +984,8 @@ L1@	STA	,U+
 	LDU	#TXT_SCREEN+1
 	LEAX	TITLE,PCR
 	LBSR	PUTS
-	TST	MODE
-	BNE	L2@
-	LDA	#'C'				; KCCFS on the Coco. 'C' is also its black-on-light screen code
-	STA	TXT_SCREEN+3
 ;
-L2@	LDU	#TXT_SCREEN+15
+	LDU	#TXT_SCREEN+15
 	LEAX	MSG_FW,PCR
 	LBSR	PUTS
 	LDD	#BUF_VERSION
@@ -1789,7 +1785,7 @@ SIM_CAS_ERROR
 
 ; ------------------------------------------------------------------
 
-TITLE		FCC	/KCDFS 2.1./		; menu version. Bump this for new features
+TITLE		FCC	/MENU 2.2./		; menu version. Bump this for new features
 		INCLUDE	build.inc		; then the build number, counted up by build.sh
 		FCB	0
 MSG_DRIVE_B	FCC	/B: /

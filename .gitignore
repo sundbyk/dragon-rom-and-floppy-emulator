@@ -6,5 +6,5 @@
 *.bin
 *.map
 *.lst
-kcdfs/*.rom
+menu/*.rom
 __pycache__/

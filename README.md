@@ -5,6 +5,12 @@ Also now works on the Tandy Color Computer (tested on a Coco 2, but probably wor
 
 How to use it: see [MANUAL.md](MANUAL.md).
 
+This is a further development of kernelcrash's original code:
+https://github.com/kernelcrash/dragon-rom-and-floppy-emulator. Added here: a second floppy drive,
+cassette (.cas) loading, a BASIC ROM of your own, folders, covers and more in the menu, and an
+SD card bootloader for firmware upgrades. The menu (KCDFS/KCCFS in the original) is now just
+called MENU.
+
 More info at  https://www.kernelcrash.com/blog/emulating-roms-and-floppy-disks-on-the-dragon-32/
 
 Heavily based on msx-rom-and-floppy-emulator (https://www.kernelcrash.com/blog/emulating-roms-and-floppy-drives-in-msx/)
@@ -130,11 +136,11 @@ If the board is in Tandy mode:
 
 Only .rom, .ccc and .bin (cartridges), .dsk and .vdk (disks) and .cas (cassettes) are used.
 Hidden files and anything starting with a '.' (such as the ._ files macOS leaves behind) are
-skipped. .cas files can only be started from the KCDFS menu, NEXT and PREV skip them.
+skipped. .cas files can only be started from the menu, NEXT and PREV skip them.
 
 The order in which you copy files into the dragon or tandy directories is 
 the order they will appear when you are cycling through disks or roms with NEXT and PREV
-(ie. its not alphabetical). The KCDFS menu sorts them by name.
+(ie. its not alphabetical). The menu sorts them by name.
 
 If you then plugged the stm32f4 board in as described, then the Dragon or Coco
 will look at the first file in the dragon or tandy directory and 'present' it.
@@ -160,7 +166,7 @@ There is also a special ROM called menu.rom. If you have built it using lwtools
 (see the build.sh script), you can copy menu.rom to the root of the SD card as
 well. If you power off your Dragon or Coco, and reset the stm32f4 board, the Dragon
 or Coco should now load the menu.rom at 0xC000 and show a disk/rom menuing system
-called KCDFS (or renamed to KCCFS if you set the jumper for Tandy mode).
+called MENU.
 From the menu you can select a disk image or ROM and the Dragon or Coco will then boot
 into what you selected (ie. if you chose a rom it will boot that ROM. If you
 chose a disk, it will boot into BASIC with a DOS loaded and the disk image
@@ -188,11 +194,11 @@ This needs a DOS that ends its start up with JMP $8371, as DragonDOS 1.0 and 4.2
 with 4.2). With any other DOS rom nothing is patched. The
 patch goes in the upper 8K of the cartridge space, which the 8K DOS rom does not use.
 
-With the KCDFS/KCCFS menu.rom, the NEXT and PREV keys still operate as they should. So if 
+With menu.rom, the NEXT and PREV keys still operate as they should. So if 
 say you had a disk image for a game. And the next disk was a blank disk you used
 for game saves, then you just press NEXT when the game asks to save, and press
 PREV to get back to the game disk. NEXT and PREV only change drive A. A second disk can go in
-drive B from the menu (SHIFT+ENTER, see KCDFS/KCCFS below).
+drive B from the menu (SHIFT+ENTER, see The menu below).
 
 Normally to get back to the menu.rom you need to power down the Dragon or Coco and
 also make sure the stm32f4 board is reset. However, there is a magic restart mode
@@ -225,7 +231,7 @@ Upgrading from the SD card
 Copy `upgrade.bin` to the root of the SD card and reset the stm32f4 board (or power it up).
 The emulator sees the file, hands over to the bootloader, which flashes it, checks it and deletes
 upgrade.bin. Then the board restarts with the new firmware. The LED on PA1 flickers while it
-is flashing. The KCDFS menu shows the firmware version in its top line.
+is flashing. The menu shows the firmware version in its top line.
 
 - If the file is not an emulator image (for example the -full.bin by mistake) it is renamed to
   upgrade.bad and nothing is flashed.
@@ -234,16 +240,16 @@ is flashing. The KCDFS menu shows the firmware version in its top line.
 - A steady blink on PA1 means there is no working emulator and nothing to flash. Use DFU or an
   ST-Link.
 
-The top line of the menu reads eg. `KCDFS 2.1.4   FW 1.2.17`. The last number of each is
+The top line of the menu reads eg. `MENU 2.2.11  FW 1.2.15`. The last number of each is
 a build number that counts up by itself: `make` keeps the firmware's in build_number, and
-kcdfs/build.sh keeps the menu's in kcdfs/build_number (run build.sh from the kcdfs folder).
+menu/build.sh keeps the menu's in menu/build_number (run build.sh from the menu folder).
 So every new upgrade.bin or menu.rom shows a different version. Bump the first part
 (FIRMWARE_VERSION in defines.h, TITLE in menu.s) for new features.
 
-KCDFS/KCCFS
------------
+The menu
+--------
 
-In the kcdfs directory is menu.s. It's a 6809 assembly program for the 
+In the menu directory is menu.s. It's a 6809 assembly program for the 
 Dragon or Coco that can communicate to the stm32f4 board in order to show a list of all the 
 files in the dragon directory of the SD card. You need lwtools to assemble it
 into menu.rom that you need to put in the root of the SD card (see build.sh).
@@ -251,7 +257,7 @@ It also builds menu-sim.rom, which has a built in list of names so you can try t
 menu out in an emulator such as XRoar without the stm32f4 board.
 
 After reset of the stm32f4 board it should load menu.rom and present it.
-So if you want to 'get back to the kcdfs menu', you can power down the
+So if you want to 'get back to the menu', you can power down the
 Dragon or Coco and hit reset on the stm32f4 board, then power on the Dragon. Sometimes
 you can get away with just holding in the reset button of the Dragon, then tap
 reset on the stm32f4 board, then let go of the Dragon reset button.
@@ -331,7 +337,7 @@ Some tapes need more:
 - --xroar-arg=...: anything else for XRoar.
 
 Coco tapes (for the tandy/ folder) need the same treatment: most Coco games have a loader of
-their own or start themselves by loading over the vectors, and kcdfs then just shows stripes.
+their own or start themselves by loading over the vectors, and the menu then just shows stripes.
 Snapshot them on a Coco with no cartridge, or Disk BASIC's hooks end up in the snapshot:
 
     python tools/cas_snapshot.py --xroar xroar.exe --batch list.txt --root tandy --out fixed \
@@ -353,19 +359,19 @@ Pressing reset on the Dragon/Coco brings the menu back.
 
 The protocol;
 
- - kcdfs reads 0xff50. Bit 6 reflects the Tandy/Dragon jumper setting on 
+ - The menu reads 0xff50. Bit 6 reflects the Tandy/Dragon jumper setting on 
    the stm32f4 board. A 0 means Tandy mode. A 1 means Dragon mode. Bit 5 is 1 when a BASIC
-   ROM of its own (dragon.rom or coco.rom) is waiting for a reset; kcdfs then does a cold start.
-   Bit 4 is 1 when both are on the card: kcdfs asks which one, writes 0 (the computer's own),
+   ROM of its own (dragon.rom or coco.rom) is waiting for a reset; the menu then does a cold start.
+   Bit 4 is 1 when both are on the card: the menu asks which one, writes 0 (the computer's own),
    1 (dragon.rom) or 2 (coco.rom) to buffer address 0x0006 and then 0x08 to 0xff50, and waits
    for bit 7 to go low.
 
- - BREAK at the top folder: kcdfs writes 0x04 to 0xff50 and waits for bit 7 to go low. The
-   stm32f4 stops toggling CART until the next reset, as for a .cas, and kcdfs warm starts BASIC.
+ - BREAK at the top folder: the menu writes 0x04 to 0xff50 and waits for bit 7 to go low. The
+   stm32f4 stops toggling CART until the next reset, as for a .cas, and the menu warm starts BASIC.
 
- - SHIFT+ENTER on a disk: kcdfs writes the entry number to 0x0000, then 0x02 to 0xff50, and
+ - SHIFT+ENTER on a disk: the menu writes the entry number to 0x0000, then 0x02 to 0xff50, and
    waits for bit 7 to go low. The stm32f4 puts the disk in drive B (or takes it out if it is the
-   one in there), and writes its name to 0x0060 ("" for none) for kcdfs to show.
+   one in there), and writes its name to 0x0060 ("" for none) for the menu to show.
 
 Drive B: each drive has its own track buffer and head position. Writing the drive select bits
 of the latch ($FF40 on the Coco, $FF48 on the Dragon) switches between them, so a DOS can go
@@ -373,14 +379,14 @@ from one drive to the other without seeking, as with real drives. Drive A is alw
 drive B only with a disk in it, and the third and fourth never are. A track that has been
 written to goes back to the image of the drive it belongs to.
 
- - kcdfs writes an 0x80 to 0xff50. That triggers the main thread of the 
+ - The menu writes an 0x80 to 0xff50. That triggers the main thread of the 
    stm32f4 board to read the current folder (dragon/ or tandy/ to begin with), keep
    only the folders and the rom and disk images, and sort them.
 
- - kcdfs polls 0xff50 to see when bit 7 goes low. That means the listing has
+ - The menu polls 0xff50 to see when bit 7 goes low. That means the listing has
    completed. The number of entries is at 0xff52/0xff53 (low byte first).
 
- - To open a folder (or "..") kcdfs writes its entry number to 0x0000 in the buffer
+ - To open a folder (or "..") the menu writes its entry number to 0x0000 in the buffer
    (see below), writes 0x20 to 0xff50 and polls for bit 7 going low again. The new
    folder's list is then in the buffer, just as after 0x80.
 
@@ -389,7 +395,7 @@ written to goes back to the image of the drive it belongs to.
    0xff56 reads or writes the byte at that address and moves the address on by one.
    The buffer holds
 ```
-0x0000        - selected entry number, 16 bit, low byte first. Written by kcdfs
+0x0000        - selected entry number, 16 bit, low byte first. Written by the menu
 0x0002        - entry to start on, 16 bit, low byte first
 0x0010        - firmware version, 0 terminated
 0x0060        - name of the disk in drive B, 0 terminated. Empty if there is none
@@ -402,18 +408,18 @@ written to goes back to the image of the drive it belongs to.
                 byte 30-31  the size in K, low byte first. 0 for folders
 ```
 
- - For a .cas, kcdfs writes 0x40 the same way, but the stm32f4 leaves the rom alone. It
+ - For a .cas, the menu writes 0x40 the same way, but the stm32f4 leaves the rom alone. It
    replaces the entries at 0x0100 with what is on the tape (16 bit numbers high byte first):
    'M' exec load length and the bytes for each machine code file, then 'B' length and the
    bytes for a BASIC program if there is one, or 'S' length and the machine state for a
    snapshot tape (see tools/cas_snapshot.py), then a 0. Or 'E' and a message if the file
-   could not be used. kcdfs copies it all into RAM and runs it. The stm32f4 also stops
+   could not be used. the menu copies it all into RAM and runs it. The stm32f4 also stops
    toggling CART until the Dragon/Coco is reset, so the menu does not start again.
 
- - When the user picks an entry, kcdfs writes its number to 0x0000, then writes 0x40
+ - When the user picks an entry, the menu writes its number to 0x0000, then writes 0x40
    to 0xff50. That triggers the main thread of the stm32f4 board to load the rom, or
    the DOS rom and the disk image. Since the cartridge rom is swapped out underneath it,
-   kcdfs does this last bit from RAM: it polls 0xff50 until bit 7 goes low (done), then
+   The menu does this last bit from RAM: it polls 0xff50 until bit 7 goes low (done), then
    cold starts the computer.
 
 __Summary__

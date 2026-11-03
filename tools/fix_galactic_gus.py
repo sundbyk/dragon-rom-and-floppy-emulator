@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Galactic Gus (Quickbeam, 1987) as a .cas the KCDFS menu can load.
+"""Galactic Gus (Quickbeam, 1987) as a .cas the menu can load.
 
 The tape has a short machine code file, GUS, that loads at $015E over BASIC's RAM hooks. The
 console out hook then runs its own loader at $0200, which reads the rest of the tape with the

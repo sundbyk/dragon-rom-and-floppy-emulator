@@ -932,7 +932,7 @@ int __attribute__((optimize("O0")))  main(void) {
 		load_basic_rom(dragon_mode ? "dragon.rom" : "coco.rom");
 	}
 
-	// attempt to load the special menu rom. See kcdfs. Note kcdfs will talk to the stm32f4 and ask it whether its in Tandy or Dragon mode
+	// attempt to load the special menu rom. See menu/. Note the menu will talk to the stm32f4 and ask it whether its in Tandy or Dragon mode
 	res = load_rom("menu.rom",(char *)&high_64k_base);
 	if (res == FR_OK) {
 		first_time=FALSE;

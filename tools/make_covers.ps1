@@ -1,5 +1,5 @@
 param([string]$List, [string]$One, [string]$Out, [switch]$Crop, [switch]$Preview)
-# Cassette covers -> .pm4 for the KCDFS menu: a PMODE 4 screen (256x192, black and buff with
+# Cassette covers -> .pm4 for the menu: a PMODE 4 screen (256x192, black and buff with
 # CSS 1), 6144 bytes, top line first, 8 pixels a byte, leftmost in bit 7. Floyd-Steinberg
 # dithered from grey.
 #

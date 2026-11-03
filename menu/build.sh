@@ -1,7 +1,7 @@
 #!/bin/sh
-# Run from the kcdfs folder
+# Run from the menu folder
 
-# Count the build number up. It goes after the version in the menu's title, eg. "KCDFS 2.1.7"
+# Count the build number up. It goes after the version in the menu's title, eg. "MENU 2.2.11"
 n=$(( $(cat build_number 2>/dev/null || echo 0) + 1 ))
 echo $n > build_number
 echo "	FCC	/$n/" > build.inc

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn a Dragon 32 tape that the KCDFS menu can not start into one it can.
+"""Turn a Dragon 32 tape that the menu can not start into one it can.
 
 Some tapes do more than CLOADM or CLOAD: a BASIC program that CLOADMs the rest, or machine code
 with its own tape loader (turbo, protection, blocks marked as EOF ...). The menu has no tape to
@@ -11,7 +11,7 @@ new .cas:
     'STATE' a file of type 'S' (ours): the PIA and SAM registers, and the 6809's registers
 
 The stm32f4 hands both to the menu, which copies RAM in, sets up the PIAs and SAM, and carries on
-from the registers with an RTI (see CAS_RESUME in kcdfs/menu.s). Games that load more from tape
+from the registers with an RTI (see CAS_RESUME in menu/menu.s). Games that load more from tape
 later on (levels) still can not work.
 
 While XRoar runs, its GDB target is used to see when the loading is done, and to take a picture

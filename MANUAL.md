@@ -10,7 +10,7 @@ Computer (CoCo 1/2). It reads a micro SD card and gives the computer:
 - two floppy drives, A and B (`.dsk`, `.vdk` disk images), with DragonDOS or RS-DOS
 - cassette programs (`.cas`), loaded straight into memory
 - optionally a BASIC ROM of your own in place of the computer's (`dragon.rom`, `coco.rom`)
-- a menu, KCDFS (Dragon) or KCCFS (CoCo), to pick from all of the above
+- a menu to pick from all of the above
 
 ## Contents
 
@@ -33,7 +33,7 @@ Format the card as FAT32. A small partition (under 1 GB) is plenty. Then lay it 
 
 ```
 /                      root of the SD card
-├── menu.rom           the menu (from the kcdfs folder)
+├── menu.rom           the menu (from the menu folder)
 ├── dragondos.rom      DOS for Dragon mode: DragonDOS 1.0, SuperDOS ...
 ├── tandydos.rom       DOS for CoCo mode: Disk Extended Color BASIC 1.1 (disk11.rom)
 ├── dragon.rom         optional: a Dragon BASIC ROM of your own (16K)
@@ -58,10 +58,10 @@ Format the card as FAT32. A small partition (under 1 GB) is plenty. Then lay it 
 
 A jumper on the board chooses the machine:
 
-| Jumper    | Mode   | Folder    | DOS ROM         | Menu name |
-|-----------|--------|-----------|-----------------|-----------|
-| off       | Dragon | `dragon/` | `dragondos.rom` | KCDFS     |
-| on (GND)  | CoCo   | `tandy/`  | `tandydos.rom`  | KCCFS     |
+| Jumper    | Mode   | Folder    | DOS ROM         |
+|-----------|--------|-----------|-----------------|
+| off       | Dragon | `dragon/` | `dragondos.rom` |
+| on (GND)  | CoCo   | `tandy/`  | `tandydos.rom`  |
 
 The top line of the menu shows which mode the board is in. If both `dragon.rom` and `coco.rom`
 are on the card, the choice you make at start up sets the mode (see section 8).
@@ -75,7 +75,7 @@ are on the card, the choice you make at start up sets the mode (see section 8).
 The menu appears. The top line reads something like:
 
 ```
- KCDFS 2.1.10  FW 1.2.14  DRAGON
+ MENU 2.2.11   FW 1.2.15  DRAGON
 ```
 
 That is the menu version, the firmware version and the mode.
@@ -267,5 +267,7 @@ menu's top line.
 
 ---
 
-Based on [dragon-rom-and-floppy-emulator](https://www.kernelcrash.com/blog/emulating-roms-and-floppy-disks-on-the-dragon-32/)
-by kernelcrash. MIT License, see [LICENSE](LICENSE).
+Based on the original code by kernelcrash:
+[github.com/kernelcrash/dragon-rom-and-floppy-emulator](https://github.com/kernelcrash/dragon-rom-and-floppy-emulator)
+(see also [the write-up](https://www.kernelcrash.com/blog/emulating-roms-and-floppy-disks-on-the-dragon-32/)).
+MIT License, see [LICENSE](LICENSE).
