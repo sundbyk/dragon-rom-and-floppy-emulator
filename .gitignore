@@ -1,0 +1,10 @@
+# Build output. upgrade.bin, the -full image and menu.rom are attached to the GitHub releases
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+kcdfs/*.rom
+__pycache__/
