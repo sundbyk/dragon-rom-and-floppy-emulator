@@ -23,7 +23,7 @@ for a small sum: get in touch with [@sundbyk](https://github.com/sundbyk) on Git
 |-------------------|----------------|
 | micro SD slot     | The card with the menu, DOS ROMs, games and disks (section 1). |
 | Next / Prev       | Step to the next or previous ROM or disk without the menu (section 9). |
-| Reset MCU         | Restarts the emulator itself. Use it after changing the SD card. |
+| Reset MCU         | Restarts the emulator itself, back to the menu. Use it after changing the SD card. Drive B is empty afterwards. |
 | Power LED         | The board has power. |
 | Status LED        | Flickers while new firmware is being written. A steady blink means something is wrong (section 12). |
 | Jumper            | Dragon or CoCo mode (section 2). |
@@ -75,8 +75,8 @@ Format the card as FAT32. A small partition (under 1 GB) is plenty. Then lay it 
   Hidden files and names starting with `.` (such as the `._` files macOS leaves behind) are
   skipped.
 - Use as many folders as you like. A folder can hold up to 1800 entries.
-- **tandydos.rom must be plain Disk BASIC 1.1** (often called `disk11.rom`). HDB-DOS and other
-  hard disk versions stop with `HARD DRIVE(S) NOT FOUND`.
+- **tandydos.rom must be plain Disk BASIC 1.1** (often called `disk11.rom`). HDB-DOS shows
+  `HARD DRIVE(S) NOT FOUND` at start up; it then works with disk images, but is not tested here.
 
 ## 2. Dragon or CoCo mode
 
@@ -99,7 +99,7 @@ are on the card, the choice you make at start up sets the mode (see section 8).
 The menu appears. The top line reads something like:
 
 ```
- MENU 2.2.11   FW 1.2.15  DRAGON
+ MENU 2.2.15   FW 1.2.19  DRAGON
 ```
 
 That is the menu version, the firmware version and the mode.
@@ -107,7 +107,15 @@ That is the menu version, the firmware version and the mode.
 It helps to power the board separately from the computer (keep GND connected). Then you can
 switch the computer off and on without the board forgetting where it was.
 
-**Pressing RESET on the computer brings the menu back.**
+### Getting back to the menu
+
+- After a **disk** or a **cartridge**, RESET on the computer starts that disk or cartridge
+  again. That is on purpose: a game that crashes can be restarted without the menu.
+- After a **cassette**, or after leaving the menu for BASIC with BREAK, RESET on the computer
+  brings the menu back.
+- To get back to the menu from a disk or cartridge, press **Reset MCU** on the board and then
+  RESET on the computer. This also empties drive B. To keep drive B: hold RESET on the
+  computer, press NEXT, wait a second, press PREV, then let go of RESET.
 
 ## 4. The menu
 
@@ -115,15 +123,17 @@ switch the computer off and on without the board forgetting where it was.
 
 ![A folder of cartridges, with the sizes shown](docs/images/menu-cartridges.jpg)
 
-The menu shows one folder at a time, 12 entries per page. The coloured block in front of each
-name tells you what it is:
+The menu shows one folder at a time, 12 entries per page. The coloured block and the letter in
+front of each name tell you what it is:
 
-| Block   | Meaning           |
-|---------|-------------------|
-| yellow  | folder (or `..`)  |
-| cyan    | disk image        |
-| magenta | ROM cartridge     |
-| white   | cassette (`.cas`) |
+| Block   | Letter | Meaning                                  |
+|---------|--------|------------------------------------------|
+| yellow  |        | folder (or `..`)                         |
+| cyan    | D      | disk image                               |
+| cyan    | **A**  | the disk in drive A (shown inverted)     |
+| cyan    | **B**  | the disk in drive B (shown inverted)     |
+| magenta | R      | ROM cartridge                            |
+| white   | C      | cassette (`.cas`)                        |
 
 The row under the title shows the disk in drive B, if there is one. The row under the list
 shows the folder you are in.
@@ -162,11 +172,29 @@ drive A.
 ### Drive B
 
 1. In the menu, select a disk and press **SHIFT+ENTER**. The menu stays where it is, and the
-   row under the title shows `B: NAME`.
+   row under the title shows `B: NAME`, and the letter in front of the disk changes from `D`
+   to `B`.
 2. Select the disk for drive A and press ENTER as usual.
 
-The disk in drive B stays there when you reset or start another disk in drive A. To take it
-out, press SHIFT+ENTER on the same disk again.
+The status row confirms it: `PUT IN DRIVE B`, or `TAKEN OUT OF DRIVE B`. `DRIVE B ERROR n` means
+the disk could not be used (1 not found, 2 not a disk, 3 name too long, 4 could not be opened).
+
+The disk in drive B stays there when the computer is reset or another disk is started in drive
+A. Reset MCU empties it. To take it out yourself, press SHIFT+ENTER on the same disk again.
+
+### A blank disk
+
+To have somewhere to save, put a blank disk image on the card and use it in drive B. Use the
+ready made ones in the [disks](disks) folder, and copy one under a new name for each save disk
+you want:
+
+- `Blank disk.vdk`: for the **Dragon** (DragonDOS), 40 tracks, single sided. Goes in `dragon/`.
+- `Blank disk.dsk`: for the **CoCo** (RS-DOS), 35 tracks, single sided. Goes in `tandy/`.
+
+Each only works with its own DOS: the CoCo disk in a Dragon gives `?IV ERROR`.
+
+`DSKINIT` / `DSKINI` can not format a disk on the emulator: it does not do the controller's
+write track command.
 
 | DOS       | Drive A | Drive B | Example          |
 |-----------|---------|---------|------------------|
@@ -288,7 +316,8 @@ menu's top line.
 | No menu, just BASIC | Is `menu.rom` in the root of the card? Is the Power LED on? Press Reset MCU, then reset the computer. |
 | `NO ROMS OR DISKS IN DRAGON` (or `TANDY`) | Make the `dragon/` or `tandy/` folder and put files in it. |
 | The menu comes back when you start a disk | The DOS ROM is missing: `dragondos.rom` or `tandydos.rom` in the root. |
-| `HARD DRIVE(S) NOT FOUND` | `tandydos.rom` is HDB-DOS. Use plain Disk BASIC 1.1. |
+| `?IV ERROR` on `DIR` (Dragon) | The disk is not a DragonDOS disk, eg. a CoCo (RS-DOS) disk. |
+| `HARD DRIVE(S) NOT FOUND` | `tandydos.rom` is HDB-DOS. It still works with disk images after the message, but plain Disk BASIC 1.1 is the safe choice. |
 | A cassette shows stripes or hangs | The tape has its own loader. Convert it (section 7). |
 | Wrong keys in BASIC | A CoCo ROM in a Dragon (or the other way round) that is not patched for its keyboard. |
 | Drive B says not ready | Put a disk in it with SHIFT+ENTER. The `B:` row shows what is there. |

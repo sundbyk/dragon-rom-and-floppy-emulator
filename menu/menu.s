@@ -39,6 +39,8 @@ BUF_SELECTED		EQU	$0000		; where the selected entry number goes
 BUF_START_CURSOR	EQU	$0002		; entry to start on
 BUF_COVER_OK		EQU	$0004		; 1 if there is a cover after COMMAND_LOAD_COVER
 BUF_BASIC_CHOICE	EQU	$0006		; for COMMAND_CHOOSE_BASIC: 0 built in, 1 Dragon, 2 Coco
+BUF_DRIVE_ENTRIES	EQU	$0008		; entry of the disk in drive A, then B. $FFFF: not here
+BUF_DRIVE_B_RESULT	EQU	$000C		; after COMMAND_DRIVE_B: 1 in, 2 out, $8n error n
 BUF_COVER		EQU	$E200		; the cover, a PMODE 4 screen
 COVER_SIZE		EQU	6144
 COVER_RAM		EQU	$1000		; where it is shown from. Clear of VARS, and fine on a 16K Coco
@@ -120,6 +122,9 @@ REPKEY			EQU	VARS+22		; key that repeats while held down, 0 for none
 REPCNT			EQU	VARS+23
 SIMCAS			EQU	VARS+24		; SIM build only. Which made up .cas is being loaded
 STACKHIT		EQU	VARS+25		; 1 if the .cas loads over our stack
+DRVA			EQU	VARS+26		; 2 bytes. Entry of the disk in drive A, $FFFF if not here
+DRVB			EQU	VARS+28		; 2 bytes. The same for drive B
+EDRIVE			EQU	VARS+30		; 'A' or 'B' if the entry being drawn is in a drive, else 0
 PREFIX			EQU	VARS+32		; MAX_PREFIX bytes
 STUB			EQU	VARS+$80	; the reboot code runs from here
 
@@ -203,6 +208,8 @@ KEY_WAIT
 	LBSR	GET_KEY
 	TSTA
 	BNE	L1@
+	LBSR	SHIFT_ENTER			; BASIC does not see ENTER while SHIFT is held down
+	LBNE	KEY_SHIFT_ENTER
 	LBSR	KEY_REPEAT			; nothing new. Is an arrow being held down?
 	TSTA
 	BEQ	KEY_WAIT
@@ -338,18 +345,89 @@ KEY_BREAK
 	LBSR	SET_ADDRESS
 	LBSR	READ_DATA
 	CMPA	#TYPE_UP
-	BNE	GO_BASIC
+	LBNE	GO_BASIC
 	LDD	#0
 	STD	CUR
 	LBRA	OPEN_FOLDER
 
 ; The selected disk goes in drive B, or comes out if it is in there already. No reset, so the
 ; disk for drive A can be picked next
+; SHIFT+ENTER, seen by SHIFT_ENTER. Only a disk can go in drive B
+KEY_SHIFT_ENTER
+	LBSR	WAIT_ENTER_UP
+	LDD	CUR
+	LBSR	ENTRY_ADDRESS
+	LBSR	SET_ADDRESS
+	LBSR	READ_DATA			; type byte
+	CMPA	#TYPE_DISK
+	LBNE	KEY_WAIT
 MOUNT_B
+	LBSR	WAIT_ENTER_UP			; or SHIFT_ENTER sees it again
+	LEAX	MSG_B_BUSY,PCR
+	BSR	SHOW_STATUS
+	LDD	#BUF_DRIVE_B_RESULT		; 0 until the stm32f4 says what it did
+	LBSR	SET_ADDRESS
+	CLRA
+	LBSR	WRITE_DATA
 	LBSR	WRITE_SELECTED
 	LBSR	SEND_DRIVE_B
+	LBSR	READ_DRIVES
 	LBSR	DRAW_DRIVE_B
-	LBRA	MAIN_LOOP
+	LBSR	DRAW_LIST
+	LDD	#BUF_DRIVE_B_RESULT
+	LBSR	SET_ADDRESS
+	LBSR	READ_DATA
+	LEAX	MSG_B_IN,PCR
+	CMPA	#1
+	BEQ	L1@
+	LEAX	MSG_B_OUT,PCR
+	CMPA	#2
+	BEQ	L1@
+	LEAX	MSG_B_NO_ANSWER,PCR
+	TSTA
+	BEQ	L1@
+	ANDA	#$0F				; an error: "DRIVE B ERROR n"
+	ADDA	#'0'
+	PSHS	A
+	LEAX	MSG_B_ERROR,PCR
+	BSR	SHOW_STATUS
+	PULS	A
+	LBSR	TO_SCREEN
+	ORA	#HIGHLIGHT
+	STA	TXT_SCREEN+(STATUS_ROW*32)+MSG_B_ERROR_LEN
+	LBRA	KEY_WAIT
+L1@	BSR	SHOW_STATUS
+	LBRA	KEY_WAIT			; it stays until the next key
+
+; The message at X on the status row, highlighted
+SHOW_STATUS
+	LDU	#TXT_SCREEN+(STATUS_ROW*32)
+	LDA	#HIGHLIGHT
+	STA	HIMASK
+	LBSR	PUTS
+	LDA	#BAR
+L1@	CMPU	#TXT_SCREEN+((STATUS_ROW+1)*32)
+	BHS	L2@
+	STA	,U+
+	BRA	L1@
+L2@	CLR	HIMASK
+	RTS
+
+; Which entries in this folder are the disks in drive A and B (see DRAW_ENTRY)
+READ_DRIVES
+	LDD	#BUF_DRIVE_ENTRIES
+	LBSR	SET_ADDRESS
+	BSR	READ_WORD_LE
+	STD	DRVA
+	BSR	READ_WORD_LE
+	STD	DRVB
+	RTS
+
+; Next two bytes from the stm32f4 buffer, low byte first, into D
+READ_WORD_LE
+	LBSR	READ_DATA
+	TFR	A,B
+	LBRA	READ_DATA
 
 ; Not equal (Z clear) if SHIFT is held down. Same row and column on the Dragon and the Coco
 SHIFT_DOWN
@@ -360,6 +438,38 @@ SHIFT_DOWN
 	STB	PIA0_B
 	COMA
 	ANDA	#$40				; row 6
+	RTS
+
+; Not equal (Z clear) if SHIFT and ENTER are both held down. They are on the same row (6), so
+; once SHIFT is down BASIC's keyboard routine never reports ENTER: look at the keys ourselves.
+; ENTER is column 0 and SHIFT column 7, on the Dragon and the Coco
+SHIFT_ENTER
+	LDA	#$FE				; column 0: ENTER
+	STA	PIA0_B
+	LDA	$FF00
+	ANDA	#$40
+	BNE	L1@				; ENTER is not down
+	LDA	#$7F				; column 7: SHIFT
+	STA	PIA0_B
+	LDA	$FF00
+	COMA
+	ANDA	#$40
+	BRA	L2@
+L1@	CLRA
+L2@	LDB	#$FF
+	STB	PIA0_B
+	TSTA
+	RTS
+
+; Wait until ENTER has been let go
+WAIT_ENTER_UP
+	LDA	#$FE				; column 0
+	STA	PIA0_B
+L1@	LDA	$FF00
+	ANDA	#$40
+	BEQ	L1@
+	LDA	#$FF
+	STA	PIA0_B
 	RTS
 
 ; BASIC's OK, as if there were no menu. The stm32f4 stops CART until the next reset, which
@@ -534,6 +644,7 @@ WRITE_SELECTED
 
 ; A new list is in the stm32f4 buffer. Pick up the count and where to start, and show the folder
 NEW_LIST
+	LBSR	READ_DRIVES
 	LBSR	GET_FILE_COUNT
 	STD	COUNT
 	LDD	#BUF_START_CURSOR
@@ -1102,9 +1213,21 @@ L4@	LDD	IDX
 	CLR	HIMASK
 	RTS
 
-; D = entry number, U = where on the screen. Draws 32 characters: the coloured mark, a space,
+; D = entry number, U = where on the screen. Draws 32 characters: the coloured mark, a letter
+; for what it is (D disk, R rom, C cassette, or A or B for the disk in that drive), a space,
 ; then the name. With SHOWSIZE the last 6 are the size, eg. "  180K"
 DRAW_ENTRY
+	TFR	D,X
+	CLR	EDRIVE
+	CMPX	DRVA
+	BNE	L0@
+	LDA	#'A'
+	STA	EDRIVE
+L0@	CMPX	DRVB				; B wins if the same disk is in both
+	BNE	L01@
+	LDA	#'B'
+	STA	EDRIVE
+L01@	TFR	X,D
 	LBSR	ENTRY_ADDRESS
 	STD	EADDR
 	LBSR	SET_ADDRESS
@@ -1121,13 +1244,29 @@ DRAW_ENTRY
 	BEQ	L2@
 	LDB	#FOLDER_MARK			; folder or ".."
 L2@	STB	,U+
-	LDA	#BLACK
+	LDA	EDRIVE				; A or B: in a drive. Shown the other way round
+	BEQ	L21@
+	LBSR	TO_SCREEN
+	ORA	HIMASK
+	EORA	#HIGHLIGHT
+	STA	,U+
+	BRA	L23@
+L21@	LDA	ETYPE				; D, R or C. Nothing for a folder or ".."
+	CMPA	#TYPE_DISK
+	BEQ	L22@
+	CMPA	#TYPE_ROM
+	BEQ	L22@
+	CMPA	#TYPE_CAS
+	BEQ	L22@
+	LDA	#' '
+L22@	LBSR	PUTC
+L23@	LDA	#BLACK
 	ORA	HIMASK
 	STA	,U+
-	LDB	#30
+	LDB	#29
 	TST	SHOWSIZE
 	BEQ	L3@
-	LDB	#24
+	LDB	#23
 L3@	LBSR	READ_DATA
 	TSTA
 	BEQ	L4@
@@ -1533,6 +1672,9 @@ WRITE_DATA
 SIM_LOW
 	FCB	0,0,3,0			; start on entry 3
 	FCB	1				; there is a cover
+	ZMB	SIM_LOW+BUF_DRIVE_ENTRIES-*
+	FCB	5,0,6,0				; entries 5 and 6 are in drive A and B
+	FCB	1				; DRIVE_B put it in
 	ZMB	SIM_LOW+BUF_VERSION-*
 	FCC	/1.2.SIM/
 	FCB	0
@@ -1789,6 +1931,18 @@ TITLE		FCC	/MENU 2.2./		; menu version. Bump this for new features
 		INCLUDE	build.inc		; then the build number, counted up by build.sh
 		FCB	0
 MSG_DRIVE_B	FCC	/B: /
+		FCB	0
+MSG_B_BUSY	FCC	/DRIVE B.../
+		FCB	0
+MSG_B_IN	FCC	/PUT IN DRIVE B/
+		FCB	0
+MSG_B_OUT	FCC	/TAKEN OUT OF DRIVE B/
+		FCB	0
+MSG_B_NO_ANSWER	FCC	/DRIVE B: NO ANSWER. UPDATE FW/
+		FCB	0
+; 1 not found again, 2 not a disk, 3 name too long, 4 could not be opened
+MSG_B_ERROR	FCC	/DRIVE B ERROR /
+MSG_B_ERROR_LEN	EQU	*-MSG_B_ERROR
 		FCB	0
 MSG_FW		FCC	/FW /
 		FCB	0

@@ -228,6 +228,30 @@ down the Dragon or Coco.
 
 The board I have for sale have its own reset botton.
 
+Emulated upper RAM (experimental)
+---------------------------------
+
+A first step towards running 64K software (OS-9, FLEX) on a 32K machine. The idea: keep the SAM
+in map type 0, where $8000-$FEFF is ROM and cartridge and the computer's own RAM never sees those
+addresses, and let the stm32f4 be 32K of RAM there instead. Reads of $8000-$BFFF come from the
+board with !DSD (pin 40) low, as for dragon.rom, reads of $C000-$FEFF come from the board as for a
+cartridge, and the board keeps every write to $8000-$FEFF. Needs pin 40 wired to PA5.
+
+Put a file called ram64.on in the root of the SD card and reset the board. Then:
+
+ - a write to $FF5F puts the RAM in place of the BASIC ROM and the cartridge
+ - a write to $FF5E takes it away again (a reset of the computer does too)
+ - reading $FF5E: bit 0 there is emulated RAM (ram64.on), bit 1 it is on
+
+The same as the SAM's $FFDF/$FFDE, without the SAM. tools/ram64test.s (RAM64TEST.cas in the
+disks folder) tries it out: it fills $8000-$FEFF with a pattern twice, reads it back, checks
+that $1000-$2FFF was not touched, and that the BASIC ROM is back afterwards. Built with -D SAM it
+uses $FFDF/$FFDE instead, and passes on an emulator with 64K of real RAM.
+
+Still to come before 64K software can run: changing its writes to $FFDF/$FFDE into $FF5F/$FF5E
+as it is read from disk, and the screen. The VDG only ever shows the computer's own RAM, and
+FLEX and Dragon 64 OS-9 put their screen in the upper 32K.
+
 Copying the firmware to the stm32f407 board
 -------------------------------------------
 
@@ -260,7 +284,7 @@ is flashing. The menu shows the firmware version in its top line.
 - A steady blink on PA1 means there is no working emulator and nothing to flash. Use DFU or an
   ST-Link.
 
-The top line of the menu reads eg. `MENU 2.2.11  FW 1.2.15`. The last number of each is
+The top line of the menu reads eg. `MENU 2.2.15  FW 1.2.19`. The last number of each is
 a build number that counts up by itself: `make` keeps the firmware's in build_number, and
 menu/build.sh keeps the menu's in menu/build_number (run build.sh from the menu folder).
 So every new upgrade.bin or menu.rom shows a different version. Bump the first part
@@ -287,8 +311,9 @@ reset on the stm32f4 board, then let go of the Dragon reset button.
 The menu shows one folder at a time, 12 entries to a page, in orange on black: ".." first
 (when you are below dragon/ or tandy/), then the folders, then the roms, disks and
 cassettes, each sorted by name. A yellow block in front of a name means a folder, cyan a disk
-image, magenta a rom, white a .cas. It copes with up to 2000 entries per folder. Names are
-shown with up to 28 characters (24 while the sizes are shown). The top line shows the menu
+image, magenta a rom, white a .cas, and a letter after the block says the same: D, R or C.
+The disks in drive A and B have an inverted A or B instead of the D. It copes with up to 2000
+entries per folder. Names are shown with up to 28 characters (23 while the sizes are shown). The top line shows the menu
 version, the firmware version and whether the board is in Dragon or Coco mode. Below the
 list is the folder you are in (eg. /GAMES/ARCADE), or a coloured stripe at the top.
 
@@ -419,6 +444,9 @@ written to goes back to the image of the drive it belongs to.
 ```
 0x0000        - selected entry number, 16 bit, low byte first. Written by the menu
 0x0002        - entry to start on, 16 bit, low byte first
+0x0008        - entry number of the disk in drive A in the folder shown, 16 bit, low byte
+                first. 0xFFFF if it is not in this folder
+0x000A        - the same for drive B
 0x0010        - firmware version, 0 terminated
 0x0060        - name of the disk in drive B, 0 terminated. Empty if there is none
 0x0020        - folder being shown below dragon/ or tandy/, eg "/GAMES/ARCADE". Empty at

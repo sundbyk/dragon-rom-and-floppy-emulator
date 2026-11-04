@@ -181,6 +181,9 @@
 #define S_SIDE          0x00000100
 #define S_DRIVE_NOT_READY	0x00000200	// the selected drive has no disk: B with nothing in it, or a third/fourth drive
 #define S_DRIVE_B_MOUNTED	0x00000400	// there is a disk in drive B
+#define S_RAM64_EN		0x00000800	// ram64.on is on the SD card: $FF5F can turn on the emulated upper RAM
+#define S_RAM64_EN_BIT		11
+#define S_RAM64_ON		0x00001000	// the emulated upper RAM is at $8000-$FEFF (must be the bit after S_RAM64_EN)
 #define S_FDC_PRESENT	0x80000000
 #define S_DRAGON_TANDY_MODE	0x40000000    // Dragon Mode = 1 (to match the state when the jumper is disconnected), Tandy Mode = 0 (to match 'pulled to GND')
 #define S_CART_QUIET	0x20000000	// stop toggling CART, so a program loaded from a .cas is not interrupted by the menu starting again
@@ -226,6 +229,10 @@
 //   0x0004  1 if LOAD_COVER found a cover, 0 if not
 //   0x0006  BASIC_CHOICE_*, written by the menu before CHOOSE_BASIC
 //   0x0010  firmware version, 0 terminated, at most 15 characters
+//   0x0008  entry number of the disk in drive A in the folder shown (16 bit, little endian),
+//           0xFFFF if it is not in this folder
+//   0x000A  the same for drive B
+//   0x000C  what DRIVE_B did: DRIVE_B_IN, DRIVE_B_OUT, or one of the DRIVE_B_ errors (0x8x)
 //   0x0060  name of the disk in drive B (no extension), 0 terminated, at most MENU_NAME_LENGTH
 //           characters. Empty if there is none
 //   0x0020  folder being shown, relative to dragon/ or tandy/, eg "/GAMES/ARCADE". Empty at the
@@ -253,6 +260,15 @@
 #define MENU_BUFFER_START_CURSOR	0x0002
 #define MENU_BUFFER_COVER_OK		0x0004
 #define MENU_BUFFER_BASIC_CHOICE	0x0006
+#define MENU_BUFFER_DRIVE_A_ENTRY	0x0008
+#define MENU_BUFFER_DRIVE_B_ENTRY	0x000A
+#define MENU_BUFFER_DRIVE_B_RESULT	0x000C
+#define DRIVE_B_IN			1	// MENU_BUFFER_DRIVE_B_RESULT: the disk went in drive B
+#define DRIVE_B_OUT			2	// it was in drive B and came out
+#define DRIVE_B_NOT_FOUND		0x81	// the entry could not be found again in the folder
+#define DRIVE_B_NOT_A_DISK		0x82
+#define DRIVE_B_NAME_TOO_LONG		0x83
+#define DRIVE_B_OPEN_FAILED		0x84
 #define MENU_BUFFER_COVER		0xE200
 #define MENU_COVER_SIZE			6144
 #define MENU_COVER_SUFFIX		".pm4"

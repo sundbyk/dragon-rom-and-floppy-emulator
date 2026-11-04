@@ -609,7 +609,15 @@ clear_pending_e_int:
 // $FFFF is also where the 6809 points the bus on its dead cycles, just before nearly every read
 // and write: it is only taken straight after $FFFE. Otherwise !DSD would still be low for the
 // I/O access that comes next (a lost $FF50 command, for one)
-	mov32	r3,#basic_rom_state
+// Emulated upper RAM (see ram64_on_write): while it is on, $8000-$BFFF is ours, read and write
+	vmov	r12,reg_fdc_system
+	tst	r12,#S_RAM64_ON
+	beq	6$
+	ldr	r0,[r2,C_TO_E_OFFSET+IDR]     // portE address bus
+	ubfx	r12,r0,#14,#2
+	cmp	r12,#2		// $8000-$BFFF
+	beq	3$
+6$:	mov32	r3,#basic_rom_state
 	ldr	r1,[r3]
 	cmp	r1,#0
 	beq	make_sure_e_is_high
@@ -659,6 +667,9 @@ e_high:
 	bmi	exit_EXTI4_not_a_cart_or_p2
 
 // Handle cart
+	vmov	r3,reg_fdc_system
+	tst	r3,#S_RAM64_ON
+	bne	cart_ram64	// emulated upper RAM, not the cartridge
 	tst	r1,#RW_MASK
 	ITT	EQ
 	vmoveq	r3,reg_exit_vector
@@ -687,6 +698,29 @@ e_high:
 #ifdef DEBUG_EXTI4_ROM_ACCESS
         vstr     reg_bit8_high,[r11,ODR]
 #endif
+	bx	r3
+
+// Emulated upper RAM at $C000-$FEFF (see ram64_on_write), in the cartridge's place. It is kept at
+// the same addresses in high_64k_base. r0 is the address, r12 the data bus as it was at e_high
+cart_ram64:
+	vmov	r3,reg_high_64k_base
+	tst	r1,#RW_MASK
+	bne	1$
+	lsrs	r12,#8		// a write
+	strb	r12,[r3,r0]
+	vmov	r3,reg_exit_vector
+	bx	r3
+1$:	ldrb	r3,[r3,r0]
+	lsls	r1,r3,#8
+	vmov	r0,reg_moder_dataout
+        str     r1,[r2, C_TO_D_OFFSET + ODR] // GPIOD ODR
+        str     r0,[r2, C_TO_D_OFFSET + MODER]  // MODER set to outputs
+	vmov	r3,reg_exit_vector
+        vmov	r1,reg_moder_datain
+20$:	ldr	r0,[r2,IDR]
+	tst	r0,#E_MASK
+	bne	20$
+        str     r1,[r2, C_TO_D_OFFSET + MODER]  // MODER set to inputs
 	bx	r3
 
 tandy_exit_EXTI4:
@@ -726,13 +760,26 @@ exit_EXTI4_not_a_cart_or_p2:
 	str	r0,[r2,ODR]
 1$:	bx	r3
 
-// Our BASIC ROM, with !DSD low. r0 is the address. Let go of !DSD when E falls
+// Our BASIC ROM, or the emulated upper RAM at $8000-$BFFF, with !DSD low. r0 is the address, r12
+// the data bus as it was at e_high. Let go of !DSD when E falls
 basic_rom_cycle:
+	vmov	r3,reg_fdc_system
+	tst	r3,#S_RAM64_ON
+	beq	4$
+	cmp	r0,#0xC000
+	bhs	4$		// the vectors
+	eor	r0,#0xC000	// the RAM for $8000-$BFFF is kept at $4000-$7FFF of high_64k_base
+	vmov	r3,reg_high_64k_base
 	tst	r1,#RW_MASK
+	bne	5$
+	lsrs	r12,#8		// a write
+	strb	r12,[r3,r0]
+	b	2$
+4$:	tst	r1,#RW_MASK
 	beq	2$		// a write. Nothing to put on the bus
 	vmov	r3,reg_high_64k_base
 	bfc	r0,#14,#1	// the vectors at $FFF0-$FFFF are $BFF0-$BFFF in the ROM
-	ldrb	r3,[r3,r0]
+5$:	ldrb	r3,[r3,r0]
 	lsls	r1,r3,#8
 	vmov	r0,reg_moder_dataout
         str     r1,[r2, C_TO_D_OFFSET + ODR] // GPIOD ODR
@@ -1490,6 +1537,42 @@ fdc_system_write:
 	bx	r3
 
 //---------------------
+
+// Emulated upper RAM, for trying it out (ram64.on on the SD card sets S_RAM64_EN): a write to
+// $FF5F puts 32K of RAM of ours at $8000-$FEFF in place of the BASIC ROM and the cartridge, a
+// write to $FF5E takes it away again. The same as the SAM's $FFDF/$FFDE, but the SAM stays in
+// map type 0, so the computer's own RAM never sees those addresses
+ram64_on_write:
+	vmov	r0,reg_fdc_system
+	tst	r0,#S_RAM64_EN
+	IT	NE
+	orrne	r0,#S_RAM64_ON
+	vmov	reg_fdc_system,r0
+	vmov	r3,reg_exit_vector
+	bx	r3
+
+ram64_off_write:
+	vmov	r0,reg_fdc_system
+	bic	r0,#S_RAM64_ON
+	vmov	reg_fdc_system,r0
+	vmov	r3,reg_exit_vector
+	bx	r3
+
+// Reading $FF5E or $FF5F: bit 0 there is emulated upper RAM, bit 1 it is on
+ram64_status_read:
+	vmov	r0,reg_fdc_system
+	ubfx	r1,r0,#S_RAM64_EN_BIT,#2
+	lsls	r1,#8
+	vmov	r0,reg_moder_dataout
+        str     r1,[r2, C_TO_D_OFFSET + ODR] // GPIOD ODR
+        str     r0,[r2, C_TO_D_OFFSET + MODER]  // MODER set to outputs
+	vmov	r3,reg_exit_vector
+        vmov	r1,reg_moder_datain
+20$:	ldr	r0,[r2,IDR]
+	tst	r0,#E_MASK
+	bne	20$
+        str     r1,[r2, C_TO_D_OFFSET + MODER]  // MODER set to inputs
+	bx	r3
 
 menu_ctrl_command_write:
 	ldr	r1,[r2,C_TO_D_OFFSET+IDR]	// read databus again

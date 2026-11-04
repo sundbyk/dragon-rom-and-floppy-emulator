@@ -737,19 +737,21 @@ static void flush_drives(void) {
 }
 
 // Make name the image in drive d. Its track buffer is filled by whoever calls this
-static void mount_drive(uint32_t d, char *name) {
+static FRESULT mount_drive(uint32_t d, char *name) {
 	drive_t *drive = &drives[d];
+	FRESULT r;
 
 	if (drive->fil.obj.id) {
 		f_close(&drive->fil);
 	}
 	memset(&drive->fil, 0, sizeof(FIL));
 	strcpy(drive->name, name);
-	load_disk_header(&drive->fil, drive->name, drive->header);
+	r = load_disk_header(&drive->fil, drive->name, drive->header);
 	drive->track_size = (uint32_t) (uint8_t) drive->header[VDK_SIDES] * 18 * 256;
 	drive->header_length = ((uint32_t) (uint8_t) drive->header[VDK_HEADER_SIZE_LSB]) +
 		((uint32_t) (uint8_t) drive->header[VDK_HEADER_SIZE_MSB] << 8);
 	drive->mounted = TRUE;
+	return r;
 }
 
 // Where drive d's head is. The selected drive's is only in the EXTI4 handler's register
@@ -759,6 +761,39 @@ static uint32_t drive_head(uint32_t d) {
 		return main_thread_data;
 	}
 	return fdc_head[d];
+}
+
+// Tell the menu which of the entries in the folder it shows are the disks in drive A and B, so
+// it can mark them. The list in the menu buffer has to be the one for folder
+static void mark_drive_entries(char *folder) {
+	uint32_t folder_len = strlen(folder);
+
+	for (uint32_t d = 0; d < 2; d++) {
+		uint16_t found = 0xFFFF;
+		char *name = drives[d].name;
+		char *dot;
+		uint32_t len;
+
+		// drives[d].name is the folder, "/" and the file name
+		if (drives[d].mounted && strncmp(name, folder, folder_len) == 0 && name[folder_len] == '/' &&
+		    strchr(name + folder_len + 1, '/') == NULL) {
+			name += folder_len + 1;
+			// the entries have the name without the extension, cut at MENU_NAME_LENGTH
+			dot = strrchr(name, '.');
+			len = dot ? (uint32_t) (dot - name) : strlen(name);
+			if (len > MENU_NAME_LENGTH) {
+				len = MENU_NAME_LENGTH;
+			}
+			for (uint32_t i = 0; i < menu_ctrl_file_count; i++) {
+				unsigned char *entry = (unsigned char *) (MENU_BUFFER_BASE + MENU_BUFFER_ENTRIES + (i * MENU_ENTRY_SIZE));
+				if (entry[0] == MENU_TYPE_DISK && strncmp((char *) &entry[1], name, len) == 0 && entry[1 + len] == 0) {
+					found = i;
+					break;
+				}
+			}
+		}
+		*(volatile uint16_t *) (MENU_BUFFER_BASE + (d ? MENU_BUFFER_DRIVE_B_ENTRY : MENU_BUFFER_DRIVE_A_ENTRY)) = found;
+	}
 }
 
 // Show the name of the disk in drive B (without the extension) in the menu, or nothing
@@ -906,6 +941,10 @@ int __attribute__((optimize("O0")))  main(void) {
 
 
 	init_fdc();
+	// ram64.on on the card: emulated upper RAM, for trying it out (see ram64_on_write)
+	if (f_stat("ram64.on", &fno) == FR_OK) {
+		FDC_SYSTEM_SET(S_RAM64_EN);
+	}
 	// This next call just 'primes' the main_thread_data so that when the first disk image is loaded it loads track 0 rather than some unknown track
 	copy_from_fdc_track_registers();
 
@@ -960,8 +999,10 @@ int __attribute__((optimize("O0")))  main(void) {
 		if (GPIOC->IDR & RESET_HIGH) {
 			special_reset_mode=0;
 		} else {
-			// The Dragon/Coco has been reset. Toggle CART again so the menu comes back
+			// The Dragon/Coco has been reset. Toggle CART again so the menu comes back, and give it
+			// its BASIC ROM back
 			FDC_SYSTEM_CLEAR(S_CART_QUIET);
+			FDC_SYSTEM_CLEAR(S_RAM64_ON);
 		}
 	
 		if (!(button_state & NEXT_ROM_OR_DISK_MASK) || !(button_state & PREV_ROM_OR_DISK_MASK) || first_time) {
@@ -1085,6 +1126,7 @@ int __attribute__((optimize("O0")))  main(void) {
 					MAIN_CMD_OR(MAIN_COMMAND_IN_PROGRESS);
 					// The menu comes back in the folder it was last in, on the entry last started
 					menu_ctrl_file_count = load_menu_folder(menu_dir, root_directory, menu_start_cursor);
+					mark_drive_entries(menu_dir);
 					MAIN_CMD_OR(MAIN_COMMAND_LOAD_DIRECTORY_COMPLETE);
 					break;
 				}
@@ -1115,6 +1157,7 @@ int __attribute__((optimize("O0")))  main(void) {
 						}
 					}
 					menu_ctrl_file_count = load_menu_folder(menu_dir, root_directory, menu_start_cursor);
+					mark_drive_entries(menu_dir);
 					if (came_from[0]) {
 						// Going up. Start on the folder we just left
 						menu_start_cursor = find_menu_folder(came_from, menu_ctrl_file_count);
@@ -1171,12 +1214,20 @@ int __attribute__((optimize("O0")))  main(void) {
 					int32_t images_before;
 					uint32_t selected = *(volatile uint16_t *) (MENU_BUFFER_BASE + MENU_BUFFER_SELECTED_INDEX);
 
+					// what happened, for the menu to show
+					volatile uint8_t *result = (volatile uint8_t *) (MENU_BUFFER_BASE + MENU_BUFFER_DRIVE_B_RESULT);
+
 					memset(&b_dir, 0, sizeof(DIR));
 					res = (selected < menu_ctrl_file_count) ?
 						find_menu_entry(&b_dir, menu_dir, menu_entry_ordinal(selected), &b_fno, &images_before) : FR_NO_FILE;
 					f_closedir(&b_dir);
-					if (res == FR_OK && is_disk_image(b_fno.fname) &&
-					    strlen(menu_dir) + 1 + strlen(b_fno.fname) < sizeof(b_name)) {
+					if (res != FR_OK || b_fno.fname[0] == 0) {
+						*result = DRIVE_B_NOT_FOUND;
+					} else if (!is_disk_image(b_fno.fname)) {
+						*result = DRIVE_B_NOT_A_DISK;
+					} else if (strlen(menu_dir) + 1 + strlen(b_fno.fname) >= sizeof(b_name)) {
+						*result = DRIVE_B_NAME_TOO_LONG;
+					} else {
 						strcpy(b_name, menu_dir);
 						strcat(b_name, "/");
 						strcat(b_name, b_fno.fname);
@@ -1189,18 +1240,25 @@ int __attribute__((optimize("O0")))  main(void) {
 							if (fdc_drive == 1) {
 								FDC_SYSTEM_SET(S_DRIVE_NOT_READY);
 							}
+							*result = DRIVE_B_OUT;
 						} else {
 							uint32_t track = drive_head(1);
 
-							mount_drive(1, b_name);
-							load_track(&drives[1].fil, track, (char *) drive_buffer(1), drives[1].header_length, drives[1].track_size);
-							drives[1].track = track;
-							FDC_SYSTEM_SET(S_DRIVE_B_MOUNTED);
-							if (fdc_drive == 1) {
-								FDC_SYSTEM_CLEAR(S_DRIVE_NOT_READY);
+							if (mount_drive(1, b_name) == FR_OK) {
+								load_track(&drives[1].fil, track, (char *) drive_buffer(1), drives[1].header_length, drives[1].track_size);
+								drives[1].track = track;
+								FDC_SYSTEM_SET(S_DRIVE_B_MOUNTED);
+								if (fdc_drive == 1) {
+									FDC_SYSTEM_CLEAR(S_DRIVE_NOT_READY);
+								}
+								*result = DRIVE_B_IN;
+							} else {
+								drives[1].mounted = FALSE;
+								*result = DRIVE_B_OPEN_FAILED;
 							}
 						}
 						show_drive_b();
+						mark_drive_entries(menu_dir);
 					}
 					MAIN_CMD_OR(MAIN_COMMAND_LOAD_ROM_COMPLETE);
 					break;

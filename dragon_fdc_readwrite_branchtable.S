@@ -33,8 +33,8 @@ dragon_branchtable_fdc:
 	.short     ((menu_ctrl_unused_write - branchtable_fdc)/2) /* 0xFF5b */
 	.short     ((menu_ctrl_unused_write - branchtable_fdc)/2) /* 0xFF5d */
 	.short     ((menu_ctrl_unused_write - branchtable_fdc)/2) /* 0xFF5d */
-	.short     ((menu_ctrl_unused_write - branchtable_fdc)/2) /* 0xFF5e */
-	.short     ((menu_ctrl_unused_write - branchtable_fdc)/2) /* 0xFF5f */
+	.short     ((ram64_off_write - branchtable_fdc)/2) /* 0xFF5e emulated upper RAM off */
+	.short     ((ram64_on_write - branchtable_fdc)/2) /* 0xFF5f emulated upper RAM on */
 
 
 
@@ -74,7 +74,7 @@ dragon_branchtable_fdc:
 	.short     ((menu_ctrl_unused_read - branchtable_fdc)/2) /* 0xFF5b */
 	.short     ((menu_ctrl_unused_read - branchtable_fdc)/2) /* 0xFF5d */
 	.short     ((menu_ctrl_unused_read - branchtable_fdc)/2) /* 0xFF5d */
-	.short     ((menu_ctrl_unused_read - branchtable_fdc)/2) /* 0xFF5e */
-	.short     ((menu_ctrl_unused_read - branchtable_fdc)/2) /* 0xFF5f */
+	.short     ((ram64_status_read - branchtable_fdc)/2) /* 0xFF5e emulated upper RAM state */
+	.short     ((ram64_status_read - branchtable_fdc)/2) /* 0xFF5f emulated upper RAM state */
 
 
