@@ -31,9 +31,9 @@ called MENU.
 
 More info at  https://www.kernelcrash.com/blog/emulating-roms-and-floppy-disks-on-the-dragon-32/
 
-Heavily based on msx-rom-and-floppy-emulator (https://www.kernelcrash.com/blog/emulating-roms-and-floppy-drives-in-msx/)
-
 Note the 'Wiring it' section below if you've built the earlier version. There are some changes.
+
+Some text is from Crash Kernel's GitHub!
 
 Overview
 --------
@@ -225,6 +225,8 @@ NEXT button, wait a second, then press the PREV button, then let go of the reset
 it will hopefully go back to the menu.rom. This won't work 100% of the time due to 
 the way some games or software have been written. In that case you'll need to power
 down the Dragon or Coco.
+
+The board I have for sale have its own reset botton.
 
 Copying the firmware to the stm32f407 board
 -------------------------------------------
